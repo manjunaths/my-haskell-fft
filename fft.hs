@@ -54,7 +54,7 @@ main = do
 --  a <- BS.readFile "aish_gray_512x320.pgm"
   a <- BS.readFile "hs-logo.pgm"
   let avec = bstovec a
-             favec = tofloatvec avec
+      favec = tofloatvec avec
       fftavec = fft favec
       ifftavec = ifft fftavec
 
