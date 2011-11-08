@@ -5,9 +5,11 @@ import qualified Data.ByteString.Lex.Lazy.Double as BS
 import qualified Data.Vector.Unboxed as DV
 import Prelude hiding ((++), length, map, sum, zipWith3)
 import Data.Vector.Unboxed (Vector, (++), (!), length, map, imap, sum, zipWith3, enumFromStepN)
+import qualified Data.Vector.Algorithms.Intro as DV
 import Data.Complex
 import System.Environment
- 
+import Control.Monad
+  
 headerSize bs = (+) 4 (BS.length . BS.concat . Prelude.take 4 . BS.lines $ bs)  
   
 dropHeader bs = BS.drop (headerSize bs) $ bs
@@ -19,15 +21,28 @@ main = do
     putStrLn "# Created by haskell-dft"
     putStrLn "512 512"
     putStrLn "255"
-    DV.mapM print . map ((round::RealFrac a => a -> Int) . realPart) . ifft_CT . fft_CT . parse $ (dropHeader s)
- 
-dft::Vector (Double) -> Vector (Complex Double)
-dft xr = map (\k -> sum (imap (arg k) xr)) ((numvec n)::Vector (Int))
+    -- DV.mapM print . map ((round::RealFrac a => a -> Int) . magnitude) . (fft2D 512 512) . DV.map (\x -> (x:+0)) . parse $ (dropHeader s)
+    DV.mapM print . scale . map (magnitude) . (fft2D 512 512) . DV.map (\x -> (x:+0)) . parse $ (dropHeader s)
+    
+scale::Vector Double -> Vector Double
+scale xs = map (\x -> (x / maxVec)*255.0) xs
+  where maxVec = DV.sort =<< return xs
+        
+
+colMajor::Int -> Int -> Vector (Complex Double) -> Vector (Complex Double)
+colMajor rows cols b = DV.concatMap (\x -> DV.map ((!) b) (enumFromStepN x cols rows)) $ (enumFromStepN 0 1 cols)
+--colMajor b cols rows = DV.map (\x -> DV.map (b!) (enumFromStepN x cols rows)) (enumFromStepN 0 1 cols)
+
+fft2D::Int -> Int -> Vector (Complex Double) -> Vector (Complex Double)
+fft2D rows cols xs = fft_CT . colMajor rows cols . fft_CT $ xs
+
+dft::Vector (Complex Double) -> Vector (Complex Double)
+dft xs = map (\k -> sum (imap (arg k) xs)) ((numvec n)::Vector (Int))
   where
-    n = length xr
+    n = length xs
     nf = fromIntegral n
     numvec n = enumFromStepN 0 1 n
-    arg k i x = (x:+0) * exp (-2 * pi * kf * ifl * (0:+1)/nf)
+    arg k i x = x * exp (-2 * pi * kf * ifl * (0:+1)/nf)
               where
                 kf = fromIntegral k
                 ifl = fromIntegral i
