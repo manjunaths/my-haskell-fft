@@ -2,7 +2,7 @@ module BStoVec (lastCharofChunk, takeChunks, headerSize, bsToVec) where
 
 import Data.ByteString.Lazy.Char8 as BS
 import Data.Vector as DV
-import Maybe
+import Data.Maybe
 
 lastCharofChunk chunkSz bs = BS.last . BS.take chunkSz $ bs
 takeChunks chunkSz bs = if lastCharofChunk chunkSz bs /= '\n' then 

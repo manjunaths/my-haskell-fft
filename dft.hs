@@ -4,13 +4,15 @@ import qualified Data.ByteString.Lazy.Char8      as BS
 import qualified Data.ByteString.Lex.Lazy.Double as BS
 import qualified Data.Vector.Unboxed as DV
 import qualified Data.Vector as BV
-import Prelude hiding ((++), length, sum, zipWith3)
-import Data.Vector.Unboxed (Vector, (++), (!), length, imap, sum, zipWith3, enumFromStepN)
+import Prelude hiding (length, sum, zipWith3)
+import Data.Vector.Unboxed as DU
 import qualified Data.Vector.Algorithms.Intro as DV
 import Data.Complex
 import System.Environment
 import Control.Monad
-  
+import Data.Binary.Get
+import Data.Maybe
+
 headerSize bs = (+) 4 (BS.length . BS.concat . Prelude.take 4 . BS.lines $ bs)  
   
 dropHeader bs = BS.drop (headerSize bs) bs
@@ -18,16 +20,17 @@ dropHeader bs = BS.drop (headerSize bs) bs
 main = do
     [f] <- getArgs
     s   <- BS.readFile f
+    let [width,height] = Prelude.map (fst . fromJust . BS.readInt) (BS.words $ (BS.lines s) !! 2)
     putStrLn "P2"
     putStrLn "# Created by haskell-dft"
-    putStrLn "512 512"
+    putStrLn $ (show width) Prelude.++ " " Prelude.++ (show height)
     -- putStrLn "255"
     -- DV.mapM print . map ((round::RealFrac a => a -> Int) . magnitude) . (fft2D 512 512) . DV.map (\x -> (x:+0)) . parse $ (dropHeader s)
     -- DV.map (round::RealFrac a => a -> Int) .
     --  . scale .
     -- let xs =  DV.map (round::RealFrac a => a -> Int) . DV.map (log . (+) 1 . magnitude) . fft2D 512 512 . DV.map (\x -> (x:+0)) . parse $ dropHeader s
-    let xs =  DV.map (round::RealFrac a => a -> Int) . DV.map (log . (+) 1 . magnitude) . fft2D 512 512 . DV.map (:+0) . parse $ dropHeader s
-    -- putStrLn (show (DV.maximum xs))
+    let xs =  DV.map (round::RealFrac a => a -> Int) . DV.map (log . (+) 1 . magnitude) . fft2D width height . DV.map (:+0) . parse $ dropHeader s
+    
     print (DV.maximum xs)
     DV.mapM print xs
     
@@ -94,7 +97,7 @@ dft xs = DV.map (\k -> sum (imap (arg k) xs)) (numvec n :: Vector Int)
 idft::Vector (Complex Double) -> Vector (Complex Double)
 idft xs = DV.map (\k ->(/) (sum (imap (arg k) xs)) nf) (numvec n :: Vector Int)
   where
-    n = length
+    n = length xs
     nf = fromIntegral n
     numvec = enumFromStepN 0 1
     arg k i x = x * exp (2 * pi * kf * ifl * (0:+1)/nf)
@@ -118,7 +121,7 @@ fftCT xs = if length xs == 1 then
                   fft_top xe xo k = xe + xo * exp (-2 * (0:+1) * pi * k / nf)
                   fft_bottom xe xo k = xe - xo * exp (-2 * (0:+1) * pi * k / nf)
               in              
-                  (++) xtop xbottom
+                  (DU.++) xtop xbottom
 
 ifftCT xs = if length xs == 1 then
                idft xs
@@ -137,7 +140,7 @@ ifftCT xs = if length xs == 1 then
                    fft_top xe xo k = xe + xo * exp (2 * (0:+1) * pi * k / nf)
                    fft_bottom xe xo k = xe - xo * exp (2 * (0:+1) * pi * k / nf)
               in              
-                (++) xtop_scaled xbottom_scaled
+                (DU.++) xtop_scaled xbottom_scaled
 
 
 -- Fill a new vector from a file containing a list of numbers.
