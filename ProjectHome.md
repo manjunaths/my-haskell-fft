@@ -1,0 +1,1 @@
+A very simple project to implement FFT in Haskell. This is a toy project and is not intended to be serious in anyway.
